@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#eef5f0" />
+    <title>箱根西麓 雨量モニター（Open-Meteo版）</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#" aria-label="箱根西麓 雨量モニター ホーム">
+        <span class="brand-mark" aria-hidden="true">雨</span>
+        <span>箱根西麓<br /><strong>雨量モニター</strong></span>
+      </a>
+      <p><span class="live-dot"></span> Open-Meteo</p>
+    </header>
+
+    <main>
+      <section class="intro">
+        <p class="eyebrow">ASHINOKO SOUTH &amp; WEST AREA</p>
+        <h1>いまの雨を、<br /><em>すぐに判断。</em></h1>
+        <p class="lead">芦ノ湖南側〜西側の山間部に近い3地点から、<br class="desktop" />直近1時間の降水量を確認しています。</p>
+      </section>
+
+      <section class="status-card normal" id="status-card" aria-live="polite">
+        <div class="status-topline">
+          <span>現在の判定</span>
+          <span id="observation-time">取得中…</span>
+        </div>
+        <div class="status-content">
+          <div>
+            <div class="status-label"><span class="status-icon" aria-hidden="true">✓</span><span id="status-text">確認中</span></div>
+            <p id="status-description">最新の観測データを読み込んでいます</p>
+          </div>
+          <div class="rainfall-value">
+            <span id="rainfall">--</span><small>mm/h</small>
+            <p>3地点の最大値</p>
+          </div>
+        </div>
+        <div class="meter" aria-hidden="true"><span id="meter-fill"></span><i class="threshold threshold-20"></i><i class="threshold threshold-30"></i></div>
+        <div class="meter-labels"><span>0</span><span>注意 20</span><span>警戒 30</span><span>40+</span></div>
+      </section>
+
+      <div class="section-heading">
+        <div><p class="eyebrow">OBSERVATION POINTS</p><h2>観測地点</h2></div>
+        <button id="refresh" type="button"><span aria-hidden="true">↻</span> 更新</button>
+      </div>
+      <section class="stations" id="stations" aria-label="観測地点別の降水量">
+        <article class="station skeleton"></article><article class="station skeleton"></article><article class="station skeleton"></article>
+      </section>
+
+      <section class="guide">
+        <p class="eyebrow">ALERT LEVELS</p>
+        <h2>判定の目安</h2>
+        <div class="guide-grid">
+          <article><span class="guide-icon normal-icon">✓</span><div><strong>平常</strong><b>20<small> mm/h</small> 未満</b><p>現時点で基準値未満です</p></div></article>
+          <article><span class="guide-icon caution-icon">!</span><div><strong>注意</strong><b>20<small> mm/h</small> 以上</b><p>側溝や小規模な水路があふれ始める段階</p></div></article>
+          <article><span class="guide-icon warning-icon">!!</span><div><strong>警戒</strong><b>30<small> mm/h</small> 以上</b><p>道路冠水や小河川の増水が始まる段階</p></div></article>
+        </div>
+      </section>
+
+      <aside class="notice"><span aria-hidden="true">i</span><p><strong>安全のために</strong>この表示は周辺3観測点相当の最大値をもとにした目安です。局地的な強雨を捉えられない場合があります。避難の判断には、自治体の避難情報や気象庁の防災情報もあわせて確認してください。</p></aside>
+    </main>
+
+    <footer><span>箱根西麓 雨量モニター（Open-Meteo版）</span><a href="https://open-meteo.com/" target="_blank" rel="noreferrer">データ提供：Open-Meteo ↗</a></footer>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
