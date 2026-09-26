@@ -4,7 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#eef5f0" />
-    <title>箱根西麓 雨量モニター</title>
+    <title>Open-Meteo版 雨量モニター</title>
+    <meta name="apple-mobile-web-app-title" content="OpenMeteo版 雨量" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <link rel="icon" href="apple-touch-icon.png" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -13,7 +17,7 @@
         <span class="brand-mark" aria-hidden="true">雨</span>
         <span>箱根西麓<br /><strong>雨量モニター</strong></span>
       </a>
-      <p><span class="live-dot"></span> 気象庁アメダス</p>
+      <p><span class="live-dot"></span> Open-Meteo</p>
     </header>
 
     <main>
@@ -60,10 +64,10 @@
         </div>
       </section>
 
-      <aside class="notice"><span aria-hidden="true">i</span><p><strong>安全のために</strong>この表示は周辺3観測点の最大値をもとにした目安です。局地的な強雨を捉えられない場合があります。避難の判断には、自治体の避難情報や気象庁の防災情報もあわせて確認してください。</p></aside>
+      <aside class="notice"><span aria-hidden="true">i</span><p><strong>安全のために</strong>この表示は周辺3観測点相当の最大値をもとにした目安です。局地的な強雨を捉えられない場合があります。避難の判断には、自治体の避難情報や気象庁の防災情報もあわせて確認してください。</p></aside>
     </main>
 
-    <footer><span>箱根西麓 雨量モニター</span><a href="https://www.jma.go.jp/bosai/map.html#contents=amedas" target="_blank" rel="noreferrer">データ提供：気象庁 ↗</a></footer>
+    <footer><span>箱根西麓 雨量モニター（Open-Meteo版）</span><a href="https://open-meteo.com/" target="_blank" rel="noreferrer">データ提供：Open-Meteo ↗</a></footer>
     <script type="module" src="app.js"></script>
   </body>
 </html>

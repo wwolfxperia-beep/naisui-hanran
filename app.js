@@ -1,11 +1,23 @@
 export const STATIONS = [
-  { id: "46166", name: "箱根", area: "芦ノ湖南東・箱根町" },
-  { id: "50066", name: "御殿場", area: "芦ノ湖西・裾野市北部" },
-  { id: "50281", name: "三島", area: "三島市・函南町西部" },
+  { id: "hakone", name: "箱根", area: "芦ノ湖南東・箱根町", lat: 35.2333, lon: 139.0167 },
+  { id: "gotemba", name: "御殿場", area: "芦ノ湖西・裾野市北部", lat: 35.3086, lon: 138.935 },
+  { id: "mishima", name: "三島", area: "三島市・函南町西部", lat: 35.1167, lon: 138.9167 },
 ];
 
-export const JMA_BASE_URL = "https://www.jma.go.jp/bosai/amedas/data/map";
+export const OPEN_METEO_BASE_URL = "https://api.open-meteo.com/v1/forecast";
 export const REFRESH_INTERVAL_MS = 10 * 60 * 1000;
+
+function buildOpenMeteoUrl() {
+  const latitude = STATIONS.map((station) => station.lat).join(",");
+  const longitude = STATIONS.map((station) => station.lon).join(",");
+  const params = new URLSearchParams({
+    latitude,
+    longitude,
+    current: "precipitation",
+    timezone: "Asia/Tokyo",
+  });
+  return `${OPEN_METEO_BASE_URL}?${params.toString()}`;
+}
 
 export function classify(rainfall) {
   if (rainfall >= 30) return { key: "warning", label: "警戒", description: "道路冠水や小河川の増水が始まる段階", icon: "!!" };
@@ -13,42 +25,39 @@ export function classify(rainfall) {
   return { key: "normal", label: "平常", description: "現時点で基準値未満です", icon: "✓" };
 }
 
-function mapTimestamp(date) {
-  const japan = new Date(date.getTime() + 9 * 60 * 60 * 1000);
-  japan.setUTCMinutes(Math.floor(japan.getUTCMinutes() / 10) * 10, 0, 0);
-  const parts = [japan.getUTCFullYear(), japan.getUTCMonth() + 1, japan.getUTCDate(), japan.getUTCHours(), japan.getUTCMinutes(), 0];
-  return parts.map((part, index) => String(part).padStart(index === 0 ? 4 : 2, "0")).join("");
-}
-
 export async function fetchLatest(fetcher = fetch, now = new Date()) {
-  // Publication can lag behind observation time. Try the latest six 10-minute slots.
-  let lastError;
-  for (let offset = 0; offset <= 50; offset += 10) {
-    const timestamp = mapTimestamp(new Date(now.getTime() - offset * 60 * 1000));
-    try {
-      const response = await fetcher(`${JMA_BASE_URL}/${timestamp}.json`, { cache: "no-store" });
-      if (!response.ok) {
-        lastError = new Error(`気象庁から応答がありません（HTTP ${response.status}）`);
-        continue;
-      }
-      const data = await response.json();
-      const observations = STATIONS.map((station) => {
-        const raw = data[station.id];
-        const value = raw?.precipitation1h?.[0];
-        return { ...station, rainfall: Number.isFinite(value) ? value : null };
-      });
-      if (observations.some((item) => item.rainfall !== null)) return { timestamp, observations };
-      lastError = new Error("対象地点の観測値がすべて欠測です");
-    } catch (error) {
-      // A single publication slot can briefly be unavailable; continue to older data.
-      lastError = error;
-    }
+  const url = buildOpenMeteoUrl();
+  let response;
+  try {
+    response = await fetcher(url, { cache: "no-store" });
+  } catch (error) {
+    throw new Error("最新の観測データを取得できませんでした", { cause: error });
   }
-  throw new Error("最新の観測データを取得できませんでした", { cause: lastError });
+  if (!response.ok) {
+    throw new Error(`気象データの取得元から応答がありません（HTTP ${response.status}）`, { cause: new Error(String(response.status)) });
+  }
+  const data = await response.json();
+  const results = Array.isArray(data) ? data : [data];
+  if (results.some((item) => item?.error)) {
+    throw new Error(`気象データの取得元がエラーを返しました（${results.find((item) => item?.error)?.reason ?? "不明なエラー"}）`);
+  }
+
+  const observations = STATIONS.map((station, index) => {
+    const value = results[index]?.current?.precipitation;
+    return { ...station, rainfall: Number.isFinite(value) ? value : null };
+  });
+  if (observations.every((item) => item.rainfall === null)) {
+    throw new Error("対象地点の観測値がすべて欠測です");
+  }
+  const timestamp = results.find((item) => item?.current?.time)?.current.time ?? now.toISOString();
+  return { timestamp, observations };
 }
 
 function formatTime(timestamp) {
-  return `${Number(timestamp.slice(4, 6))}月${Number(timestamp.slice(6, 8))}日 ${timestamp.slice(8, 10)}:${timestamp.slice(10, 12)} 現在`;
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(timestamp);
+  if (!match) return timestamp;
+  const [, , month, day, hour, minute] = match;
+  return `${Number(month)}月${Number(day)}日 ${hour}:${minute} 現在`;
 }
 
 function render({ timestamp, observations }) {
