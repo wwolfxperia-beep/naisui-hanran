@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { classify, fetchLatest, OPEN_METEO_BASE_URL, STATIONS } from "./app.js";
+import { classify, fetchLatest, JMA_BASE_URL } from "./app.js";
 
 test("classify applies exact rainfall thresholds", () => {
   assert.equal(classify(19.9).label, "平常");
@@ -9,49 +9,39 @@ test("classify applies exact rainfall thresholds", () => {
   assert.equal(classify(30).label, "警戒");
 });
 
-test("fetchLatest returns station rainfall from Open-Meteo response", async () => {
+test("fetchLatest returns station rainfall from JMA response", async () => {
   const fakeFetch = async (url, options) => {
-    assert.ok(url.startsWith(OPEN_METEO_BASE_URL));
-    const params = new URL(url).searchParams;
-    assert.equal(params.get("latitude"), STATIONS.map((s) => s.lat).join(","));
-    assert.equal(params.get("longitude"), STATIONS.map((s) => s.lon).join(","));
-    assert.equal(params.get("current"), "precipitation");
+    assert.equal(url, `${JMA_BASE_URL}/20260923155000.json`);
     assert.deepEqual(options, { cache: "no-store" });
-    return {
-      ok: true,
-      json: async () => [
-        { current: { time: "2026-09-26T13:45", precipitation: 12.5 } },
-        { current: { time: "2026-09-26T13:45", precipitation: 20 } },
-        { current: { time: "2026-09-26T13:45", precipitation: null } },
-      ],
-    };
+    return { ok: true, json: async () => ({
+    "46166": { precipitation1h: [12.5, 0] },
+    "50066": { precipitation1h: [20, 0] },
+    "50281": { precipitation1h: [null, 1] },
+    }) };
   };
-  const result = await fetchLatest(fakeFetch);
-  assert.equal(result.timestamp, "2026-09-26T13:45");
+  const result = await fetchLatest(fakeFetch, new Date("2026-09-23T06:57:00Z"));
+  assert.equal(result.timestamp, "20260923155000");
   assert.deepEqual(result.observations.map(({ rainfall }) => rainfall), [12.5, 20, null]);
 });
 
-test("fetchLatest throws when the HTTP response is not ok", async () => {
-  const fakeFetch = async () => ({ ok: false, status: 503 });
-  await assert.rejects(() => fetchLatest(fakeFetch), /応答がありません/);
+test("fetchLatest falls back when a recent slot fails to load", async () => {
+  const requested = [];
+  const fakeFetch = async (url) => {
+    requested.push(url);
+    if (requested.length === 1) throw new TypeError("temporary network error");
+    if (requested.length === 2) return { ok: false, status: 404 };
+    return { ok: true, json: async () => ({ "46166": { precipitation1h: [30, 0] } }) };
+  };
+
+  const result = await fetchLatest(fakeFetch, new Date("2026-09-23T06:57:00Z"));
+  assert.equal(result.timestamp, "20260923153000");
+  assert.equal(result.observations[0].rainfall, 30);
+  assert.equal(requested.length, 3);
 });
 
-test("fetchLatest throws when Open-Meteo reports an error", async () => {
-  const fakeFetch = async () => ({
-    ok: true,
-    json: async () => ({ error: true, reason: "Invalid latitude" }),
-  });
-  await assert.rejects(() => fetchLatest(fakeFetch), /Invalid latitude/);
-});
-
-test("fetchLatest throws when every station is missing a value", async () => {
-  const fakeFetch = async () => ({
-    ok: true,
-    json: async () => [
-      { current: { time: "2026-09-26T13:45", precipitation: null } },
-      { current: { time: "2026-09-26T13:45", precipitation: null } },
-      { current: { time: "2026-09-26T13:45", precipitation: null } },
-    ],
-  });
-  await assert.rejects(() => fetchLatest(fakeFetch), /欠測/);
+test("fetchLatest reports failure after checking all six slots", async () => {
+  let attempts = 0;
+  const fakeFetch = async () => { attempts += 1; return { ok: false, status: 404 }; };
+  await assert.rejects(() => fetchLatest(fakeFetch, new Date("2026-09-23T06:57:00Z")), /最新の観測データ/);
+  assert.equal(attempts, 6);
 });
